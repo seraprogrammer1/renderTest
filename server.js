@@ -1,161 +1,122 @@
 const express = require('express');
 const mysql = require('mysql2');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const path = require('path');
+
 const fs = require('fs');
-const exp = require('constants');
+
 require('dotenv').config();
 
-
+const access = require('./server.access');
 
 const app = express();
 
-// app.use(express.static('public'));
 app.use(express.json());
-app.use('', express.static('public'));
-app.use('/admin', (req, res, next) => {
-    const username = req.query.username;
-    const password = req.query.password;
+app.use(express.static('server_test_public'));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); 
 
-    console.log(username, password);
 
-    if (!username || !password) {
-        res.status(403).send("Unauthorized");
-    }
+// user routes
+app.post('/login', access.login);
 
-    connection.query(
-        `call findAdmin('${username}', '${password}')`,
-        (err, results) => {
-            if (err || !username || !password || !results) {
-                res.status(403).send("Unauthorized");
-            } else if (results[0].length > 0) {
-                    console.log(results);
-                    next();
-            }
-        }
-    );
-});
-app.use('/admin', express.static('admin'));
+app.post('/signup', access.signup);
 
-const connection = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME
+app.post('/user', access.verifyToken);
+
+app.get('/home', access.verifyToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'server_test_public', 'home.html'));
 });
 
-connection.connect((err) => {
-    if (err) {
-        console.log(err);
-    } else {
-        console.log('Connected to the database');
-    }
+app.get('/admin', access.verifyToken, access.verifyAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'server_test_public', 'dashboard.html'));
 });
 
-app.get('/login', (req, res) => {
-    const username = req.query.username;
-    const password = req.query.password;
-    connection.query(
-        `call login('${username}', '${password}')`,
-        (err, results) => {
-            if (err) {
-                res.send(err);
-            } else {
-                res.send(results);
-            }
-        }
-    );
-});
+app.get('/logout', access.verifyToken, access.logout);
 
-app.post('/signup', (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
 
-    connection.query(
-        `call findUser('${username}')`,
-        (err, results) => {
-            if (err) {
-                res.send(err);
-            } else {
-                if (results.length > 0) {
-                    res.send('User already exists');
-                } else {
-                    connection.query(
-                        `call signup('${username}', '${password}')`,
-                        (err, results) => {
-                            if (err) {
-                                res.send(err);
-                            } else {
-                                res.send(results);
-                            }
-                        }
-                    );
-                }
-            }
-        }
-    );
-});
+// Que routes
+app.get('/addQue', access.addQue);
 
-app.get('/admin/adminGetUser', (req, res) => {
-    const searchUsername = req.query.searchUsername;
-    const username = req.query.username;
-    const password = req.query.password;
+app.get('/getQue', access.getQue);
 
-    connection.query(
-        `call findAdmin('${username}', '${password}')`,
-        (err, results) => {
-            if (err) {
-                res.send(err);
-            } else {
-                if (results.length > 0) {
-                    connection.query(
-                        `call findUser('${searchUsername}')`,
-                        (err, results) => {
-                            if (err) {
-                                res.send(err);
-                            } else {
-                                res.send(results);
-                            }
-                        }
-                    );
-                } else {
-                    res.send('Unauthorized');
-                }
-            }
-        }
-    )
-});
+app.get('/getQueById', access.getQueById);
 
-app.post('/admin/adminDeleteUser', (req, res) => {
-    const searchUsername = req.body.searchUsername;
-    const username = req.body.username;
-    const password = req.body.password;
+// event routes
+app.get('/events', access.getEvents);
 
-    connection.query(
-        `call findAdmin('${username}', '${password}')`,
-        (err, results) => {
-            if (err) {
-                res.send(err);
-            } else {
-                if (results.length > 0) {
-                    connection.query(
-                        `call deleteUser('${searchUsername}')`,
-                        (err, results) => {
-                            if (err) {
-                                res.send(err);
-                            } else {
-                                res.send(results);
-                            }
-                        }
-                    );
-                } else {
-                    res.send('Unauthorized');
-                }
-            }
-        }
-    )
-});
+app.post('/events', access.createEvent);
 
-const PORT = process.env.PORT;
+app.put('/events/:id', access.updateEvent);
+
+app.delete('/events/:id', access.deleteEvent);
+
+
+
+// app.get('/admin/adminGetUser', access.verifyToken, (req, res) => {
+//     const searchUsername = req.query.searchUsername;
+
+//     const token = req.cookies.token;
+//     const {username, password} = jwt.decode(token);
+
+//     connection.query(
+//         `call findAdmin('${username}', '${password}')`,
+//         (err, results) => {
+//             if (err) {
+//                 res.send(err);
+//             } else {
+//                 if (results.length > 0) {
+//                     connection.query(
+//                         `call findUser('${searchUsername}')`,
+//                         (err, results) => {
+//                             if (err) {
+//                                 res.send(err);
+//                             } else {
+//                                 res.send(results);
+//                             }
+//                         }
+//                     );
+//                 } else {
+//                     res.send('Unauthorized');
+//                 }
+//             }
+//         }
+//     )
+// });
+
+// app.post('/admin/adminDeleteUser', access.verifyToken, (req, res) => {
+//     const searchUsername = req.body.searchUsername;
+
+//     const token = req.cookies.token;
+//     const {username, password} = jwt.decode(token);
+
+//     connection.query(
+//         `call findAdmin('${username}', '${password}')`,
+//         (err, results) => {
+//             if (err) {
+//                 res.send(err);
+//             } else {
+//                 if (results.length > 0) {
+//                     connection.query(
+//                         `call deleteUser('${searchUsername}')`,
+//                         (err, results) => {
+//                             if (err) {
+//                                 res.send(err);
+//                             } else {
+//                                 res.send(results);
+//                             }
+//                         }
+//                     );
+//                 } else {
+//                     res.send('Unauthorized');
+//                 }
+//             }
+//         }
+//     )
+// });
+
+const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
     console.log(`is running on http://localhost:${PORT}`);
