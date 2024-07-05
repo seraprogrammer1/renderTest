@@ -69,7 +69,6 @@ const access = {
         connection.query(
             `call findUser('${username}')`,
             (err, results) => {
-                console.log(results);
                 if (err) {
                     res.send(err);
                 } else {
@@ -188,11 +187,9 @@ const access = {
 
     // Get all Ques endpoint
     getQue: (req, res) => {
-        console.log('Fetching queue data');
         connection.query(
             `call getContacts()`,
             (err, results) => {
-                console.log(results);
                 if (err) {
                     res.status(500).send
                 }
