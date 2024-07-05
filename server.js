@@ -53,7 +53,7 @@ app.get('/events', (req, res) => {
 });
 
 // in development
-app.get('/admin', (req, res) => {
+app.get('/admin', access.verifyAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public/admin', 'admin.html'));
 });
 
