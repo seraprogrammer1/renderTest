@@ -12,10 +12,20 @@ const access = require('./server.access');
 
 const app = express();
 
+ // to parse JSON bodies
 app.use(express.json());
-app.use(express.static('server_test_public'));
+
+// to read cookies
+app.use(cookieParser());
+
+// redirect to home page
+app.get('/', (req, res) => res.redirect('/home'));
+
+// to serve static files
+app.use(express.static('public'));
+
+// to parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); 
 
 
 // user routes
@@ -23,98 +33,48 @@ app.post('/login', access.login);
 
 app.post('/signup', access.signup);
 
-app.post('/user', access.verifyToken);
+app.get('/logout', access.logout);
 
-app.get('/home', access.verifyToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'server_test_public', 'home.html'));
+// page routes
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/home/', 'index.html'));
 });
 
-app.get('/admin', access.verifyToken, access.verifyAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'server_test_public', 'dashboard.html'));
+app.get('/contact', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/contact/', 'contact.html'));
 });
 
-app.get('/logout', access.verifyToken, access.logout);
+app.get('/about', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/about/', 'about.html'));
+});
+
+app.get('/events', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/events/', 'events.html'));
+});
+
+// in development
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/admin', 'admin.html'));
+});
 
 
 // Que routes
-app.get('/addQue', access.addQue);
+app.post('/addQue', access.addQue);
 
 app.get('/getQue', access.getQue);
 
 app.get('/getQueById', access.getQueById);
 
+app.delete('/deleteQue', access.deleteQue);
+
 // event routes
 app.get('/events', access.getEvents);
 
-app.post('/events', access.createEvent);
+app.post('/events', access.verifyToken, access.createEvent);
 
 app.put('/events/:id', access.updateEvent);
 
 app.delete('/events/:id', access.deleteEvent);
-
-
-
-// app.get('/admin/adminGetUser', access.verifyToken, (req, res) => {
-//     const searchUsername = req.query.searchUsername;
-
-//     const token = req.cookies.token;
-//     const {username, password} = jwt.decode(token);
-
-//     connection.query(
-//         `call findAdmin('${username}', '${password}')`,
-//         (err, results) => {
-//             if (err) {
-//                 res.send(err);
-//             } else {
-//                 if (results.length > 0) {
-//                     connection.query(
-//                         `call findUser('${searchUsername}')`,
-//                         (err, results) => {
-//                             if (err) {
-//                                 res.send(err);
-//                             } else {
-//                                 res.send(results);
-//                             }
-//                         }
-//                     );
-//                 } else {
-//                     res.send('Unauthorized');
-//                 }
-//             }
-//         }
-//     )
-// });
-
-// app.post('/admin/adminDeleteUser', access.verifyToken, (req, res) => {
-//     const searchUsername = req.body.searchUsername;
-
-//     const token = req.cookies.token;
-//     const {username, password} = jwt.decode(token);
-
-//     connection.query(
-//         `call findAdmin('${username}', '${password}')`,
-//         (err, results) => {
-//             if (err) {
-//                 res.send(err);
-//             } else {
-//                 if (results.length > 0) {
-//                     connection.query(
-//                         `call deleteUser('${searchUsername}')`,
-//                         (err, results) => {
-//                             if (err) {
-//                                 res.send(err);
-//                             } else {
-//                                 res.send(results);
-//                             }
-//                         }
-//                     );
-//                 } else {
-//                     res.send('Unauthorized');
-//                 }
-//             }
-//         }
-//     )
-// });
 
 const PORT = process.env.PORT || 4000;
 

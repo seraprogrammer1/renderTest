@@ -22,11 +22,11 @@ function loginValidation() {
     username.classList.remove('red-border');
     password.classList.remove('red-border');
 
-    if (username === '' || !/^[a-zA-Z0-9]{4,}$/.test(username.value)){
+    if (username === '' || !/^[a-zA-Z0-9]{4,}$/.test(username.value) || username.value.length > 20){
         username.classList.add('red-border');
         passed = false;
     }
-    if (password === '' || !/^[a-zA-Z0-9]{4,}$/.test(password.value)){
+    if (password === '' || !/^[a-zA-Z0-9]{4,}$/.test(password.value || password.value.length > 20)){
         password.classList.add('red-border');
         passed = false;
     }
@@ -53,13 +53,35 @@ function signValidation() {
         email.classList.add('red-border');
         passed = false;
     }
+    if (email.value.length > 255) {
+        email.classList.add('red-border');
+        passed = false;
+        alert('Email must be less than 255 characters');
+    }
+
     if (username === '' || !/^[a-zA-Z0-9]{4,}$/.test(username.value)){
         username.classList.add('red-border');
         passed = false;
+    } else if (username.value.length > 20 && !password.value.length > 20) {
+        username.classList.add('red-border');
+        passed = false;
+        alert('Username must be less than 20 characters');
     }
+
     if (password === '' || !/^[a-zA-Z0-9]{4,}$/.test(password.value)){
         password.classList.add('red-border');
         passed = false;
+    } else if (password.value.length > 20 && !username.value.length > 20) {
+        password.classList.add('red-border');
+        passed = false;
+        alert('Password must be less than 20 characters');
+    }
+
+    if (username.value.length > 20 && password.value.length > 20) {
+        username.classList.add('red-border');
+        password.classList.add('red-border');
+        passed = false;
+        alert('Username and password must be less than 20 characters');
     }
 
     if (passed) {
@@ -89,8 +111,17 @@ login_form_submit.addEventListener('click', (event) => {
     };
 
     fetch(`/login`, options)
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 401) {
+                alert('Invalid username or password');
+                return;
+            }
+            return response.json();
+        })
         .then(data => {
+            if (!data) {
+                return;
+            }
 
             if (data.message) {
                 alert(data.message);
@@ -127,15 +158,19 @@ signup_form_submit.addEventListener('click', (event) => {
     };
 
     fetch(`/signup`, options)
-        .then(response => response.json())
-        .then(data => {
-
+        .then(response => {
             if (response.status === 409) {
                 alert('Username already exists');
                 return;
             }
             if (response.status === 500) {
                 alert('Internal server error');
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data) {
                 return;
             }
 

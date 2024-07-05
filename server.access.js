@@ -36,7 +36,7 @@ const access = {
                         const token = jwt.sign(
                             { "username": username, "password": password }, 
                             process.env.SECRET_KEY,  
-                            { expiresIn: '10s' }
+                            { expiresIn: '1h' }
                         );
                         res.cookie('token', token, { httpOnly: true });
                         res.json({ token, user, admin });
@@ -50,8 +50,14 @@ const access = {
 
     // Logout endpoint
     logout: (req, res) => {
-        res.clearCookie('token');
-        res.send('Logged out successfully');
+        const token = req.cookies.token;
+        if (token) {
+            res.clearCookie('token');
+            res.status(200).json({ message: 'Logged out' });
+        }
+        else {
+            res.status(400).json({ message: 'Already logged out' });
+        }
     },
 
     // Signup endpoint
@@ -59,7 +65,6 @@ const access = {
         const email = req.body.email;
         const username = req.body.username;
         const password = req.body.password;
-        console.log(email, username, password);
 
         connection.query(
             `call findUser('${username}')`,
@@ -74,11 +79,22 @@ const access = {
                         connection.query(
                             `call signup('${email}', '${username}', '${password}')`,
                             (err, results2) => {
-                                console.log("r2: "+results2, err);
                                 if (err) {
                                     res.status(500).json({ message: 'Internal server error' });
                                 } else {
-                                    res.status(200).json({ message: 'User created' });
+                                    if (results2[0].length > 0) {
+                                    const user = results2[0];
+                                    const admin = results2[0][0].admin;
+                                    const token = jwt.sign(
+                                        { "username": username, "password": password }, 
+                                        process.env.SECRET_KEY,  
+                                        { expiresIn: '1h' }
+                                    );
+                                    res.cookie('token', token, { httpOnly: true });
+                                    res.json({ token, user, admin });
+                                    } else {
+                                        res.status(500).json({ message: 'Internal server error' });
+                                    }
                                 }
                             }
                         );
@@ -91,14 +107,23 @@ const access = {
     verifyAdmin: (req, res, next) => {
         const token = req.cookies.token;
         if (!token) {
-            return res.redirect('/');
+            return res.redirect('/home');
         } else {
+
+            try {
+                jwt.verify(token, process.env.SECRET_KEY)
+            } catch (err) {
+                res.clearCookie('token');
+                return res.status(400).json({ message: 'Please login' });
+            }
+
             const {username, password} = jwt.decode(token);
             connection.query(
                 `call findAdmin('${username}', '${password}')`,
                 (err, results) => {
                     if (err) {
-                        res.redirect('/');
+                        console.log(err);
+                        res.redirect('/home');
                     } else {
                         if (results[0].length > 0) {
                             next();
@@ -115,19 +140,19 @@ const access = {
     verifyToken: (req, res, next) => {
         const token = req.cookies.token;
         if (!token) {
-            return res.redirect('/');
+            return res.status(400).json({ message: 'Please login' });
         } else {
             try {
                 jwt.verify(token, process.env.SECRET_KEY)
                 next();
             } catch (err) {
                 res.clearCookie('token');
-                return res.redirect('/');
+                return res.status(400).json({ message: 'Please login' });
             }
         }
     },
 
-    // Add question endpoint
+    // Add Que endpoint
     addQue: (req, res) => {
         const firstName = req.body.firstName;
         const lastName = req.body.lastName;
@@ -146,22 +171,39 @@ const access = {
         );
     },
 
-    // Get all questions endpoint
-    getQue: (req, res) => {
+    // Delete Que endpoint
+    deleteQue: (req, res) => {
+        const id = req.body.id;
         connection.query(
-            `call getContact()`,
+            `call deleteContact('${id}')`,
             (err, results) => {
                 if (err) {
-                    res.status(500).send
-                }
-                else {
-                    res.status(200).send(results[0]);
+                    res.status(500).json({ message: 'Internal server error' });
+                } else {
+                    res.status(200).json({ message: 'Deleted' });
                 }
             }
         );
     },
 
-    // Get question by ID endpoint
+    // Get all Ques endpoint
+    getQue: (req, res) => {
+        console.log('Fetching queue data');
+        connection.query(
+            `call getContacts()`,
+            (err, results) => {
+                console.log(results);
+                if (err) {
+                    res.status(500).send
+                }
+                else {
+                    res.status(200).json({message: results[0]});
+                }
+            }
+        );
+    },
+
+    // Get Que by ID endpoint
     getQueById: (req, res) => {
         const id = req.params.id;
         connection.query(
